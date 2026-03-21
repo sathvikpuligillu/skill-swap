@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>SkillSwap — Teach One, Learn One</title>
+  <meta name="description" content="SkillSwap is a peer-to-peer skill exchange platform. Teach one skill, learn one skill — connect with people directly." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Initial Loader -->
+  <div id="initial-loader" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  </div>
+
+<div class="app-wrapper">
+
+  <!-- ───────────────────────────────────────
+       LOGIN SCREEN
+  ─────────────────────────────────────────── -->
+  <section id="screen-login" class="screen">
+    <div class="onboard-logo" style="justify-content:center; margin-top:15vh; margin-bottom:24px;">
+      <div class="onboard-logo-icon" style="width:56px; height:56px; border-radius:14px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+        </svg>
+      </div>
+    </div>
+    <div style="text-align:center; margin-bottom: 40px;">
+      <h1 class="onboard-headline" style="font-size:2rem; margin-bottom:12px;">SkillSwap</h1>
+      <p class="onboard-sub" style="font-size:1rem;">Teach one skill.<br/>Learn one skill.</p>
+    </div>
+    
+    <button id="btn-login-google" class="btn btn-full btn-lg" style="background:#fff; color:#3c4043; border: 1px solid #dadce0; font-weight: 500; font-family: 'Inter', sans-serif; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 0.95rem;">
+      <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.16v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.16C1.43 8.55 1 10.22 1 12s.43 3.45 1.16 4.93l3.68-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.16 7.07l3.68 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </button>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       ONBOARDING SCREEN
+  ─────────────────────────────────────────── -->
+  <section id="screen-onboarding" class="screen">
+    <div class="onboard-logo">
+      <div class="onboard-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+        </svg>
+      </div>
+      <span class="onboard-logo-name">SkillSwap</span>
+    </div>
+
+    <h1 class="onboard-headline">Teach one skill.<br/>Learn one skill.</h1>
+    <p class="onboard-sub">Connect with peers, exchange knowledge — no money involved.</p>
+
+    <div style="margin-bottom: 24px;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text); margin-bottom: 6px;">Profile Setup</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4;">Add skills you know and what you want to learn to get matched with others.</p>
+    </div>
+
+    <form id="onboard-form" novalidate>
+      <!-- Teach Skills -->
+      <div class="form-group">
+        <label class="form-label" for="teach-input">Skills I Can Teach <span>*</span></label>
+        <div class="skill-input-row">
+          <input type="text" id="teach-input" class="form-input" placeholder="e.g. Python, Guitar…" />
+          <button type="button" id="add-teach" class="btn btn-ghost" aria-label="Add teach skill">Add</button>
+        </div>
+        <div class="form-error" id="teach-error"></div>
+        <div class="skill-chips" id="teach-chips"></div>
+        <div style="margin-top:7px; font-size:0.76rem; color:var(--text-light)">Press Enter or comma to add a skill</div>
+      </div>
+
+      <!-- Learn Skills -->
+      <div class="form-group">
+        <label class="form-label" for="learn-input">Skills I Want to Learn <span>*</span></label>
+        <div class="skill-input-row">
+          <input type="text" id="learn-input" class="form-input" placeholder="e.g. Design, Dancing…" />
+          <button type="button" id="add-learn" class="btn btn-ghost" aria-label="Add learn skill">Add</button>
+        </div>
+        <div class="form-error" id="learn-error"></div>
+        <div class="skill-chips" id="learn-chips"></div>
+      </div>
+
+      <!-- Contact -->
+      <div class="contact-section">
+        <div class="contact-section-title">Contact Information</div>
+        <p class="contact-helper">At least one contact method is required — only shown to your connections.</p>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" for="phone-input">Phone Number</label>
+          <input type="tel" id="phone-input" class="form-input" placeholder="+91 98765 43210" autocomplete="tel" />
+          <div class="form-error" id="phone-error"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" for="whatsapp-input">WhatsApp Number</label>
+          <input type="tel" id="whatsapp-input" class="form-input" placeholder="+91 98765 43210" />
+          <div class="form-error" id="whatsapp-error"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="linkedin-input">LinkedIn Profile URL</label>
+          <input type="url" id="linkedin-input" class="form-input" placeholder="https://linkedin.com/in/yourname" autocomplete="url" />
+          <div class="form-error" id="linkedin-error"></div>
+        </div>
+      </div>
+
+      <div class="form-error" id="contact-error" style="margin-bottom:14px; font-size:0.85rem"></div>
+
+      <button type="submit" class="btn btn-primary btn-full btn-lg" id="onboard-submit">
+        Join SkillSwap
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       HOME FEED
+  ─────────────────────────────────────────── -->
+  <section id="screen-home" class="screen">
+    <div class="page-header">
+      <h1 class="page-title">Home</h1>
+      <p class="page-subtitle">Ranked by mutual skill match</p>
+    </div>
+    <div id="home-feed"></div>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       EXPLORE
+  ─────────────────────────────────────────── -->
+  <section id="screen-explore" class="screen">
+    <div class="page-header">
+      <h1 class="page-title">Explore</h1>
+      <p class="page-subtitle">Browse all users &amp; search by skill</p>
+    </div>
+    <div class="search-wrapper">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="search" id="explore-search" class="search-input" placeholder="Search skills like Python, Guitar, Editing…" />
+    </div>
+    <div id="explore-feed"></div>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       REQUESTS
+  ─────────────────────────────────────────── -->
+  <section id="screen-requests" class="screen">
+    <div class="page-header">
+      <h1 class="page-title">Requests</h1>
+      <p class="page-subtitle">Incoming skill exchange requests</p>
+    </div>
+    <div id="requests-list"></div>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       CONNECTIONS
+  ─────────────────────────────────────────── -->
+  <section id="screen-connections" class="screen">
+    <div class="page-header">
+      <h1 class="page-title">Connections</h1>
+      <p class="page-subtitle">Your accepted connections</p>
+    </div>
+    <div id="connections-list"></div>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       MY PROFILE
+  ─────────────────────────────────────────── -->
+  <section id="screen-profile" class="screen">
+    <div id="profile-content"></div>
+  </section>
+
+  <!-- ───────────────────────────────────────
+       BOTTOM NAV BAR
+  ─────────────────────────────────────────── -->
+  <nav class="nav-bar" id="nav-bar" role="navigation" aria-label="Main navigation">
+    <button class="nav-item active" data-screen="home" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="nav-label">Home</span>
+    </button>
+
+    <button class="nav-item" data-screen="explore" aria-label="Explore">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <span class="nav-label">Explore</span>
+    </button>
+
+    <button class="nav-item" data-screen="requests" aria-label="Requests" style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <span class="nav-label">Requests</span>
+      <span class="nav-badge" id="requests-badge">0</span>
+    </button>
+
+    <button class="nav-item" data-screen="connections" aria-label="Connections">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+      <span class="nav-label">Connections</span>
+    </button>
+
+    <button class="nav-item" data-screen="profile" aria-label="My Profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span class="nav-label">Profile</span>
+    </button>
+  </nav>
+
+  <!-- ───────────────────────────────────────
+       REQUEST MODAL
+  ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="request-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title" id="modal-title">Request Skill Exchange</h2>
+      <p class="modal-subtitle">Sending to <strong id="modal-target-name"></strong></p>
+
+      <div class="form-group">
+        <label class="form-label" for="request-message">Your Message <span>*</span></label>
+        <textarea id="request-message" class="form-input" rows="4"
+          placeholder="Hey! I can teach you Python and I'd love to learn Guitar from you. Interested?"
+        ></textarea>
+        <div class="form-error" id="modal-msg-error">Please write a message before sending.</div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" id="modal-close" style="flex:1">Cancel</button>
+        <button class="btn btn-primary" id="modal-send-btn" style="flex:2">Send Request 🚀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────
+       PROFILE VIEW MODAL (other user)
+  ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div id="profile-modal-body"></div>
+      <div style="margin-top:20px; display:flex; gap:10px">
+        <button class="btn btn-ghost" id="profile-modal-close" style="flex:1">Close</button>
+        <button class="btn btn-primary" id="profile-modal-request-btn" style="flex:2">Request Skill Exchange</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</div>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="app.js?v=9"></script>
+</body>
+</html>
