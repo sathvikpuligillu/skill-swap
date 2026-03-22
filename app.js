@@ -871,17 +871,22 @@ function subscribeRealtime(userId) {
 // 20. BOOT & AUTH STATE
 // ─────────────────────────────────────────────
 
+let isAuthInitialized = false;
+let hasLoadedApp = false;
+
 document.addEventListener('DOMContentLoaded', async () => {
   console.log("App DOM loaded.");
   
-  // Isolated 6-second fallback solely if CDN blocking caused initialization collapse
+  // Prevent Infinite Loading: Fallback timeout (max 5 seconds)
   setTimeout(() => {
     if (!isAuthInitialized) {
+      isAuthInitialized = true;
       hideInitialLoader();
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-login').classList.add('active');
-      console.warn("Auth initialization stalled; un-hanging local UI...");
+      console.warn("Auth check timed out after 5s; showing login screen.");
     }
-  }, 6000);
+  }, 5000);
 
   const btnGoogle = document.getElementById('btn-login-google');
   if (btnGoogle) {
@@ -905,99 +910,123 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-let isAuthInitialized = false;
-
 function hideInitialLoader() {
   const l = document.getElementById('initial-loader');
   if (l) l.style.display = 'none';
 }
 
-supa.auth.onAuthStateChange(async (event, session) => {
-  console.log("Auth check started");
-  console.log("Event:", event, "Session exists:", !!session);
+function showLoginScreen() {
+  clearSession();
+  hasLoadedApp = false;
+  hideInitialLoader();
+  document.querySelector('.nav-bar').classList.remove('visible');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-login').classList.add('active');
+}
+
+async function loadHomePage(user) {
+  if (hasLoadedApp) return;
+  hasLoadedApp = true;
+  
+  hideInitialLoader();
+  document.getElementById('screen-login').classList.remove('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-home').classList.add('active');
+  document.querySelector('.nav-bar').classList.add('visible');
+  
+  const homeContainer = document.getElementById('home-feed');
+  if (homeContainer) homeContainer.innerHTML = loadingHTML();
+
+  const userId = user.id;
+  setSession(userId);
+  
+  console.log("Calling Supabase... (users.select) in background");
+  const selectRes = await fetchWithRetry(() => supa.from('users').select('id, skills_teach').eq('id', userId).single(), "users.select");
+  let existingUser = selectRes.data;
+  let selectErr = selectRes.error;
+  
+  if (selectErr && selectErr.code !== 'PGRST116') {
+    console.warn("users.select failed, safely bypassing...");
+    existingUser = { id: userId, skills_teach: ['pending_network'] }; 
+    selectErr = null;
+  }
+  
+  if (!existingUser || (existingUser && (!existingUser.skills_teach || existingUser.skills_teach.length === 0))) {
+    document.querySelector('.nav-bar').classList.remove('visible');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-onboarding').classList.add('active');
+    initOnboarding();
+    
+    let name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+    let email = user.email;
+    fetchWithRetry(() => supa.from('users').insert({ id: userId, name, email, created_at: Date.now() }), "users.insert")
+       .catch(err => console.warn(err));
+  } else {
+    await showScreen('home');
+    subscribeRealtime(userId);
+  }
+}
+
+// 1. Session Handling FIRST
+async function initSessionAuth() {
   try {
+    const { data, error } = await supa.auth.getSession();
     isAuthInitialized = true;
-    if (event === 'SIGNED_OUT' || !session) {
-      clearSession();
-      document.querySelector('.nav-bar').classList.remove('visible');
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById('screen-login').classList.add('active');
+    
+    if (error || !data.session) {
+      showLoginScreen();
       return;
     }
-
-    // PRIMARY NON-BLOCKING UI: Show UI before fetch
-    let user = session.user; // Primary fallback
+    
+    // Primary non-blocking UI show
     hideInitialLoader();
     document.getElementById('screen-login').classList.remove('active');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-home').classList.add('active');
     document.querySelector('.nav-bar').classList.add('visible');
-    
     const homeContainer = document.getElementById('home-feed');
     if (homeContainer) homeContainer.innerHTML = loadingHTML();
-
-    console.log("Calling Supabase... (getUser) in background");
+    
+    // 2. Safe User Fetch: Call getUser ONLY after session exists
+    let user = data.session.user;
     const { data: userData, error: userErr } = await fetchWithRetry(() => supa.auth.getUser(), "getUser");
-    console.log("Response:", { user: userData?.user }, userErr);
     if (!userErr && userData?.user) {
       user = userData.user;
     } else if (userErr) {
-      console.warn("getUser() API error, gracefully falling back to local session:", userErr.message);
+      console.warn("getUser() gracefully fell back to session user:", userErr.message);
     }
     
     if (!user) {
-      throw new Error("User missing and no local session found. Force logged out.");
-    }
-
-    const userId = user.id;
-    setSession(userId);
-    
-    console.log("Calling Supabase... (users.select) in background");
-    const selectRes = await fetchWithRetry(() => supa.from('users').select('id, skills_teach').eq('id', userId).single(), "users.select");
-    let existingUser = selectRes.data;
-    let selectErr = selectRes.error;
-    
-    console.log("Response:", { existingUser }, selectErr);
-    
-    if (selectErr && selectErr.code !== 'PGRST116') {
-      console.warn("users.select completely failed after 3 retries. Bypassing fatal error to show partial UI.");
-      existingUser = { id: userId, skills_teach: ['pending_network'] }; // Graceful fallback forces route to home feed
-      selectErr = null;
+      await supa.auth.signOut();
+      showLoginScreen();
+      return;
     }
     
-    if (!existingUser || (existingUser && (!existingUser.skills_teach || existingUser.skills_teach.length === 0))) {
-      console.log("Insert query triggered for new user");
-      document.querySelector('.nav-bar').classList.remove('visible');
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById('screen-onboarding').classList.add('active');
-      initOnboarding();
-      
-      let name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-      let email = user.email;
-      
-      console.log("Calling Supabase... (users.insert) asynchronously");
-      fetchWithRetry(() => supa.from('users').insert({ id: userId, name, email, created_at: Date.now() }), "users.insert")
-         .catch(err => console.warn(`Data insert rejection gracefully swallowed:`, err));
-    } else {
-      await showScreen('home');
-      subscribeRealtime(userId);
-    }
-    console.log("Auth response received and handled perfectly.");
+    await loadHomePage(user);
   } catch (err) {
-    console.error("Fatal Auth Exception:", err);
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-login').classList.add('active');
-    
-    const errDiv = document.createElement('div');
-    errDiv.style.position = 'fixed'; errDiv.style.top = '10px'; errDiv.style.left = '10px'; errDiv.style.right = '10px'; errDiv.style.background = '#d9534f'; errDiv.style.color = 'white'; errDiv.style.padding = '15px'; errDiv.style.zIndex = 10000; errDiv.style.borderRadius = '5px';
-    errDiv.innerHTML = `<strong>Supabase Connection Error:</strong><br/>${err.message || String(err)}`;
-    document.body.appendChild(errDiv);
-    
-    showToast("Login chain failed");
-  } finally {
-    hideInitialLoader();
+    console.error("Session INIT Error", err);
+    isAuthInitialized = true;
+    showLoginScreen();
+  }
+}
+
+// 4. Auth Listener
+supa.auth.onAuthStateChange(async (event, session) => {
+  console.log("Auth event:", event);
+  isAuthInitialized = true;
+  if (event === 'SIGNED_IN' && session) {
+    // 2. Safe User Fetch ONLY after session exists
+    let user = session.user;
+    const { data: userData } = await fetchWithRetry(() => supa.auth.getUser(), "getUser");
+    if (userData?.user) user = userData.user;
+
+    await loadHomePage(user);
+  } else if (event === 'SIGNED_OUT') {
+    showLoginScreen();
   }
 });
+
+initSessionAuth();
 
 document.addEventListener('DOMContentLoaded', async () => {
   // inject spinner keyframe
