@@ -916,6 +916,7 @@ function hideInitialLoader() {
 }
 
 function showLoginScreen() {
+  console.log("Showing login");
   clearSession();
   hasLoadedApp = false;
   hideInitialLoader();
@@ -924,9 +925,11 @@ function showLoginScreen() {
   document.getElementById('screen-login').classList.add('active');
 }
 
-async function loadHomePage(user) {
+async function initializeApp(user) {
   if (hasLoadedApp) return;
   hasLoadedApp = true;
+  
+  console.log("Loading app");
   
   hideInitialLoader();
   document.getElementById('screen-login').classList.remove('active');
@@ -940,30 +943,34 @@ async function loadHomePage(user) {
   const userId = user.id;
   setSession(userId);
   
-  console.log("Calling Supabase... (users.select) in background");
-  const selectRes = await fetchWithRetry(() => supa.from('users').select('id, skills_teach').eq('id', userId).single(), "users.select");
-  let existingUser = selectRes.data;
-  let selectErr = selectRes.error;
-  
-  if (selectErr && selectErr.code !== 'PGRST116') {
-    console.warn("users.select failed, safely bypassing...");
-    existingUser = { id: userId, skills_teach: ['pending_network'] }; 
-    selectErr = null;
-  }
-  
-  if (!existingUser || (existingUser && (!existingUser.skills_teach || existingUser.skills_teach.length === 0))) {
-    document.querySelector('.nav-bar').classList.remove('visible');
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-onboarding').classList.add('active');
-    initOnboarding();
+  try {
+    const selectRes = await fetchWithRetry(() => supa.from('users').select('id, skills_teach').eq('id', userId).single(), "users.select");
+    let existingUser = selectRes.data;
+    let selectErr = selectRes.error;
     
-    let name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-    let email = user.email;
-    fetchWithRetry(() => supa.from('users').insert({ id: userId, name, email, created_at: Date.now() }), "users.insert")
-       .catch(err => console.warn(err));
-  } else {
-    await showScreen('home');
-    subscribeRealtime(userId);
+    if (selectErr && selectErr.code !== 'PGRST116') {
+      console.warn("users.select failed, safely bypassing...");
+      existingUser = { id: userId, skills_teach: ['pending_network'] }; 
+      selectErr = null;
+    }
+    
+    if (!existingUser || (existingUser && (!existingUser.skills_teach || existingUser.skills_teach.length === 0))) {
+      document.querySelector('.nav-bar').classList.remove('visible');
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-onboarding').classList.add('active');
+      initOnboarding();
+      
+      let name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      let email = user.email;
+      fetchWithRetry(() => supa.from('users').insert({ id: userId, name, email, created_at: Date.now() }), "users.insert")
+         .catch(err => console.warn(err));
+    } else {
+      await showScreen('home');
+      subscribeRealtime(userId);
+    }
+  } catch (err) {
+    console.error("initializeApp failed:", err);
+    showLoginScreen();
   }
 }
 
@@ -973,36 +980,28 @@ async function initSessionAuth() {
     const { data, error } = await supa.auth.getSession();
     isAuthInitialized = true;
     
-    if (error || !data.session) {
+    if (error || !data.session || !data.session.user) {
+      console.log("No session");
       showLoginScreen();
       return;
     }
     
-    // Primary non-blocking UI show
-    hideInitialLoader();
-    document.getElementById('screen-login').classList.remove('active');
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-home').classList.add('active');
-    document.querySelector('.nav-bar').classList.add('visible');
-    const homeContainer = document.getElementById('home-feed');
-    if (homeContainer) homeContainer.innerHTML = loadingHTML();
+    console.log("Session found");
     
-    // 2. Safe User Fetch: Call getUser ONLY after session exists
     let user = data.session.user;
-    const { data: userData, error: userErr } = await fetchWithRetry(() => supa.auth.getUser(), "getUser");
-    if (!userErr && userData?.user) {
-      user = userData.user;
-    } else if (userErr) {
-      console.warn("getUser() gracefully fell back to session user:", userErr.message);
+    
+    // 2. Safe User Fetch ONLY after session exists
+    try {
+      const { data: userData, error: userErr } = await fetchWithRetry(() => supa.auth.getUser(), "getUser");
+      if (!userErr && userData?.user) {
+        user = userData.user;
+      }
+    } catch (err) {
+      console.warn("Silent fallback to session user on getUser error");
     }
     
-    if (!user) {
-      await supa.auth.signOut();
-      showLoginScreen();
-      return;
-    }
+    await initializeApp(user);
     
-    await loadHomePage(user);
   } catch (err) {
     console.error("Session INIT Error", err);
     isAuthInitialized = true;
@@ -1012,16 +1011,12 @@ async function initSessionAuth() {
 
 // 4. Auth Listener
 supa.auth.onAuthStateChange(async (event, session) => {
-  console.log("Auth event:", event);
   isAuthInitialized = true;
-  if (event === 'SIGNED_IN' && session) {
-    // 2. Safe User Fetch ONLY after session exists
-    let user = session.user;
-    const { data: userData } = await fetchWithRetry(() => supa.auth.getUser(), "getUser");
-    if (userData?.user) user = userData.user;
-
-    await loadHomePage(user);
+  if (event === 'SIGNED_IN' && session && session.user) {
+    console.log("Session found");
+    await initializeApp(session.user);
   } else if (event === 'SIGNED_OUT') {
+    console.log("No session");
     showLoginScreen();
   }
 });
