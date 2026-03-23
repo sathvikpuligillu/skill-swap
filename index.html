@@ -256,6 +256,49 @@
     </div>
   </div>
 
+  <!-- ───────────────────────────────────────
+       EDIT PROFILE MODAL
+  ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="edit-profile-modal" role="dialog" aria-modal="true" aria-labelledby="edit-profile-modal-title">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title" id="edit-profile-modal-title">Edit Profile</h2>
+
+      <form id="edit-profile-form" novalidate style="margin-top: 20px;">
+        <div class="form-group">
+          <label class="form-label" for="edit-name-input">Name <span>*</span></label>
+          <input type="text" id="edit-name-input" class="form-input" required />
+          <div class="form-error" id="edit-name-error">Name is required.</div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="edit-teach-input">Skills I Can Teach <span>*</span></label>
+          <div class="skill-input-row">
+            <input type="text" id="edit-teach-input" class="form-input" placeholder="e.g. Python, Guitar…" />
+            <button type="button" id="edit-add-teach" class="btn btn-ghost">Add</button>
+          </div>
+          <div class="form-error" id="edit-teach-error"></div>
+          <div class="skill-chips" id="edit-teach-chips"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-learn-input">Skills I Want to Learn <span>*</span></label>
+          <div class="skill-input-row">
+            <input type="text" id="edit-learn-input" class="form-input" placeholder="e.g. Design, Dancing…" />
+            <button type="button" id="edit-add-learn" class="btn btn-ghost">Add</button>
+          </div>
+          <div class="form-error" id="edit-learn-error"></div>
+          <div class="skill-chips" id="edit-learn-chips"></div>
+        </div>
+
+        <div style="display:flex;gap:10px; margin-top:20px;">
+          <button type="button" class="btn btn-ghost" id="edit-profile-cancel" style="flex:1">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="edit-profile-save" style="flex:2">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

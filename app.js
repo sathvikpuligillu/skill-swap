@@ -244,7 +244,10 @@ function buildSkillInput(inputId, chipsId, type) {
   const addBtn = input.nextElementSibling;
   if (addBtn?.tagName === 'BUTTON') addBtn.addEventListener('click', () => addSkill(input.value));
 
-  return { getSkills: () => [...skills] };
+  return { 
+    getSkills: () => [...skills],
+    setSkills: (newSkills) => { skills.length = 0; if(newSkills) skills.push(...newSkills); renderChips(); }
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -676,6 +679,7 @@ async function renderProfile() {
       <div class="profile-name">${user.name}</div>
       <div class="profile-joined">Member since ${new Date(user.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
       ${preferredContactLabel(user)}
+      <button class="btn btn-secondary btn-sm" id="open-edit-profile-btn" style="margin-top: 16px;">Edit Profile</button>
     </div>
     <div class="profile-section">
       <div class="profile-section-title">Skills I Teach</div>
@@ -701,6 +705,11 @@ async function renderProfile() {
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await supa.auth.signOut();
   });
+
+  const editBtn = document.getElementById('open-edit-profile-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', () => openEditProfileModal(user));
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -830,6 +839,97 @@ async function openProfileModal(uid) {
 
 function closeProfileModal() {
   document.getElementById('profile-modal').classList.remove('open');
+}
+
+// ─────────────────────────────────────────────
+// 17b. EDIT PROFILE MODAL
+// ─────────────────────────────────────────────
+
+let editTeachCtrl, editLearnCtrl;
+let isEditProfileInit = false;
+
+function initEditProfile() {
+  if (isEditProfileInit) return;
+  isEditProfileInit = true;
+  
+  editTeachCtrl = buildSkillInput('edit-teach-input', 'edit-teach-chips', 'teach');
+  editLearnCtrl = buildSkillInput('edit-learn-input', 'edit-learn-chips', 'learn');
+  
+  document.getElementById('edit-profile-form').addEventListener('submit', handleEditProfileSubmit);
+  
+  document.getElementById('edit-profile-cancel').addEventListener('click', () => {
+    document.getElementById('edit-profile-modal').classList.remove('open');
+  });
+  document.getElementById('edit-profile-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('edit-profile-modal')) {
+      document.getElementById('edit-profile-modal').classList.remove('open');
+    }
+  });
+
+  document.getElementById('edit-add-teach').addEventListener('click', () =>
+    document.getElementById('edit-teach-input').dispatchEvent(new Event('blur'))
+  );
+  document.getElementById('edit-add-learn').addEventListener('click', () =>
+    document.getElementById('edit-learn-input').dispatchEvent(new Event('blur'))
+  );
+}
+
+function openEditProfileModal(user) {
+  initEditProfile();
+  
+  document.getElementById('edit-name-input').value = user.name || '';
+  
+  const teach = user.skills_teach || [];
+  const learn = user.skills_learn || [];
+  
+  editTeachCtrl.setSkills(teach);
+  editLearnCtrl.setSkills(learn);
+  
+  setFieldError('edit-name-error', false, '');
+  setFieldError('edit-teach-error', false, '');
+  setFieldError('edit-learn-error', false, '');
+  
+  document.getElementById('edit-profile-modal').classList.add('open');
+}
+
+async function handleEditProfileSubmit(e) {
+  e.preventDefault();
+  let valid = true;
+  
+  const name = document.getElementById('edit-name-input').value.trim();
+  const teachSkills = editTeachCtrl.getSkills();
+  const learnSkills = editLearnCtrl.getSkills();
+  
+  setFieldError('edit-name-error', !name, 'Name is required');
+  setFieldError('edit-teach-error', !teachSkills.length, 'Add at least one skill you can teach');
+  setFieldError('edit-learn-error', !learnSkills.length, 'Add at least one skill you want to learn');
+  
+  if (!name || !teachSkills.length || !learnSkills.length) valid = false;
+  if (!valid) return;
+
+  const btn = document.getElementById('edit-profile-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  
+  try {
+    const userId = getSession();
+    const payload = {
+      name,
+      skills_teach: teachSkills,
+      skills_learn: learnSkills
+    };
+    
+    const { error } = await supa.from('users').update(payload).eq('id', userId);
+    if (error) throw error;
+    
+    document.getElementById('edit-profile-modal').classList.remove('open');
+    showToast('Profile updated!');
+    await renderProfile();
+  } catch (err) {
+    console.error("Edit Profile Error:", err);
+    showToast('Error updating profile');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
 }
 
 // ─────────────────────────────────────────────
